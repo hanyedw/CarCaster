@@ -1,2 +1,208 @@
-# CarCaster
-CarCaster
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build APK with Docker
+        run: |
+          docker run --rm \
+            -v $PWD:/project \
+            mingc/android-build-box:latest \
+            bash -c "
+              cd /project
+              mkdir -p app/src/main/java/com/carcaster/app
+              mkdir -p app/src/main/res/values
+
+              cat > settings.gradle << 'SETTINGS'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = 'CarCaster'
+          include ':app'
+          SETTINGS
+
+              cat > build.gradle << 'BUILDGRADLE'
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+          }
+          BUILDGRADLE
+
+              cat > app/build.gradle << 'APPGRADLE'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.carcaster.app'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.carcaster.app'
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              buildFeatures { compose = true }
+              composeOptions { kotlinCompilerExtensionVersion = '1.5.8' }
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation platform('androidx.compose:compose-bom:2024.02.00')
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.activity:activity-compose:1.8.2'
+              implementation 'androidx.compose.ui:ui'
+              implementation 'androidx.compose.material3:material3'
+              implementation 'androidx.compose.material:material-icons-extended'
+              implementation 'androidx.compose.foundation:foundation'
+          }
+          APPGRADLE
+
+              cat > app/src/main/AndroidManifest.xml << 'MANIFEST'
+          <?xml version='1.0' encoding='utf-8'?>
+          <manifest xmlns:android='http://schemas.android.com/apk/res/android'>
+              <uses-permission android:name='android.permission.READ_MEDIA_VIDEO' />
+              <uses-permission android:name='android.permission.READ_EXTERNAL_STORAGE' android:maxSdkVersion='32' />
+              <uses-permission android:name='android.permission.WAKE_LOCK' />
+              <application android:label='Car Video Caster' android:theme='@style/Theme.AppCompat.DayNight.NoActionBar'>
+                  <activity android:name='.MainActivity' android:exported='true'>
+                      <intent-filter>
+                          <action android:name='android.intent.action.MAIN' />
+                          <category android:name='android.intent.category.LAUNCHER' />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          MANIFEST
+
+              echo '<resources><string name="app_name">Car Video Caster</string></resources>' > app/src/main/res/values/strings.xml
+
+              cat > app/src/main/java/com/carcaster/app/MainActivity.kt << 'KOTLIN'
+          package com.carcaster.app
+          import android.content.Context
+          import android.content.Intent
+          import android.media.projection.MediaProjectionManager
+          import android.net.Uri
+          import android.os.Bundle
+          import android.provider.MediaStore
+          import android.view.WindowManager
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.rememberLauncherForActivityResult
+          import androidx.activity.compose.setContent
+          import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.compose.foundation.background
+          import androidx.compose.foundation.clickable
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.foundation.shape.RoundedCornerShape
+          import androidx.compose.material.icons.Icons
+          import androidx.compose.material.icons.filled.Cast
+          import androidx.compose.material.icons.filled.PlayArrow
+          import androidx.compose.material.icons.filled.VideoFile
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.draw.clip
+          import androidx.compose.ui.graphics.Brush
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.platform.LocalContext
+          import androidx.compose.ui.text.font.FontWeight
+          import androidx.compose.ui.text.style.TextOverflow
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.unit.sp
+          data class VideoItem(val id: Long, val name: String, val duration: Long, val size: Long, val uri: Uri)
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(s: Bundle?) {
+                  super.onCreate(s)
+                  window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                  setContent { MaterialTheme(colorScheme = darkColorScheme()) { CarCasterApp() } }
+              }
+          }
+          @Composable
+          fun CarCasterApp() {
+              val ctx = LocalContext.current
+              var videos by remember { mutableStateOf<List<VideoItem>>(emptyList()) }
+              var casting by remember { mutableStateOf(false) }
+              LaunchedEffect(Unit) { videos = loadVideos(ctx) }
+              val pm = ctx.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+              val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                  if (it.resultCode == ComponentActivity.RESULT_OK) casting = true
+              }
+              Column(Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
+                  Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF1A1A2E), Color(0xFF16213E)))).padding(20.dp)) {
+                      Text("🚗 Car Video Caster", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                  }
+                  Box(Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(16.dp))
+                      .background(if (casting) Color(0xFF004030) else Color(0xFF003060))
+                      .clickable { if (!casting) launcher.launch(pm.createScreenCaptureIntent()) else casting = false }
+                      .padding(18.dp)) {
+                      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                          Icon(Icons.Default.Cast, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                          Spacer(Modifier.width(10.dp))
+                          Text(if (casting) "إيقاف البث" else "ابدأ البث على شاشة السيارة", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                      }
+                  }
+                  Text("📂 الفيديوهات (${videos.size})", color = Color(0xFF6070A0), modifier = Modifier.padding(16.dp))
+                  LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                      items(videos) { v ->
+                          Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF141428))
+                              .clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW).apply { setDataAndType(v.uri, "video/*"); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }) }
+                              .padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                              Icon(Icons.Default.VideoFile, null, tint = Color(0xFF0088FF), modifier = Modifier.size(32.dp))
+                              Spacer(Modifier.width(12.dp))
+                              Column(Modifier.weight(1f)) {
+                                  Text(v.name, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                  Text("${v.duration/60000}:${"${(v.duration/1000)%60}".padStart(2,'0')}", color = Color(0xFF5070A0), fontSize = 12.sp)
+                              }
+                              Icon(Icons.Default.PlayArrow, null, tint = Color(0xFF00C8FF))
+                          }
+                      }
+                  }
+              }
+          }
+          fun loadVideos(ctx: Context): List<VideoItem> {
+              val list = mutableListOf<VideoItem>()
+              ctx.contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                  arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DURATION, MediaStore.Video.Media.SIZE),
+                  null, null, MediaStore.Video.Media.DATE_ADDED + " DESC")?.use {
+                  while (it.moveToNext()) {
+                      val id = it.getLong(0)
+                      list.add(VideoItem(id, it.getString(1) ?: "فيديو", it.getLong(2), it.getLong(3),
+                          Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "$id")))
+                  }
+              }
+              return list
+          }
+          KOTLIN
+              gradle assembleDebug --no-daemon
+            "
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarCaster-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
