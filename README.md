@@ -20,24 +20,22 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Create project and build
+      - name: Install Gradle
+        run: |
+          curl -s "https://get.sdkman.io" | bash
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install gradle 8.4
+          echo "$HOME/.sdkman/candidates/gradle/current/bin" >> $GITHUB_PATH
+
+      - name: Create project files
         run: |
           mkdir -p app/src/main/java/com/carcaster/app
           mkdir -p app/src/main/res/values
-          mkdir -p gradle/wrapper
-
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
 
           cat > gradle.properties << 'EOF'
           android.useAndroidX=true
           android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=512m
+          org.gradle.jvmargs=-Xmx2g
           EOF
 
           cat > settings.gradle << 'EOF'
@@ -212,8 +210,8 @@ jobs:
           }
           EOF
 
-          gradle wrapper --gradle-version 8.4
-          ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Build APK
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
