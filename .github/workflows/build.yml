@@ -9,72 +9,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Create project structure
+      - name: Create project files
         run: |
           mkdir -p app/src/main/java/com/carcaster/app
           mkdir -p app/src/main/res/values
           mkdir -p gradle/wrapper
 
-      - name: Create gradle wrapper
-        run: |
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
+          echo 'distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-bin.zip
           zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
+          zipStorePath=wrapper/dists' > gradle/wrapper/gradle-wrapper.properties
 
-      - name: Create settings.gradle
-        run: |
-          cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
+          echo 'pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
           }
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+              repositories { google(); mavenCentral() }
           }
           rootProject.name = "CarCaster"
-          include ':app'
-          EOF
+          include ":app"' > settings.gradle
 
-      - name: Create build.gradle
-        run: |
-          cat > build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application' version '8.1.0' apply false
-              id 'org.jetbrains.kotlin.android' version '1.9.0' apply false
-          }
-          EOF
+          echo 'plugins {
+              id "com.android.application" version "8.2.2" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+          }' > build.gradle
 
-      - name: Create app build.gradle
-        run: |
-          cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
+          echo 'plugins {
+              id "com.android.application"
+              id "org.jetbrains.kotlin.android"
           }
           android {
-              namespace 'com.carcaster.app'
+              namespace "com.carcaster.app"
               compileSdk 34
               defaultConfig {
                   applicationId "com.carcaster.app"
@@ -83,161 +61,95 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
-              buildFeatures { compose true }
-              composeOptions { kotlinCompilerExtensionVersion '1.5.1' }
+              buildFeatures { compose = true }
+              composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
               }
-              kotlinOptions { jvmTarget = '17' }
+              kotlinOptions { jvmTarget = "17" }
           }
           dependencies {
-              def composeBom = platform('androidx.compose:compose-bom:2023.10.01')
-              implementation composeBom
-              implementation 'androidx.core:core-ktx:1.12.0'
-              implementation 'androidx.activity:activity-compose:1.8.2'
-              implementation 'androidx.compose.ui:ui'
-              implementation 'androidx.compose.material3:material3'
-              implementation 'androidx.compose.material:material-icons-extended'
-              implementation 'androidx.compose.foundation:foundation'
-          }
-          EOF
+              implementation platform("androidx.compose:compose-bom:2024.02.00")
+              implementation "androidx.core:core-ktx:1.12.0"
+              implementation "androidx.activity:activity-compose:1.8.2"
+              implementation "androidx.compose.ui:ui"
+              implementation "androidx.compose.material3:material3"
+              implementation "androidx.compose.material:material-icons-extended"
+              implementation "androidx.compose.foundation:foundation"
+          }' > app/build.gradle
 
-      - name: Create AndroidManifest
-        run: |
-          cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.carcaster.app">
+          echo '<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
               <uses-permission android:name="android.permission.WAKE_LOCK" />
-              <application android:label="Car Video Caster" android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" android:supportsRtl="true">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
+              <application android:label="Car Video Caster" android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
               </application>
-          </manifest>
-          EOF
+          </manifest>' > app/src/main/AndroidManifest.xml
 
-      - name: Create strings.xml
-        run: |
-          cat > app/src/main/res/values/strings.xml << 'EOF'
-          <resources>
-              <string name="app_name">Car Video Caster</string>
-          </resources>
-          EOF
+          echo '<resources><string name="app_name">Car Video Caster</string></resources>' > app/src/main/res/values/strings.xml
 
-      - name: Create MainActivity.kt
-        run: |
-          cat > app/src/main/java/com/carcaster/app/MainActivity.kt << 'KOTLIN'
+          cat > app/src/main/java/com/carcaster/app/MainActivity.kt << 'EOF'
           package com.carcaster.app
-          import android.content.Context
-          import android.content.Intent
-          import android.media.projection.MediaProjectionManager
-          import android.net.Uri
-          import android.os.Bundle
-          import android.provider.MediaStore
-          import android.view.WindowManager
-          import androidx.activity.ComponentActivity
-          import androidx.activity.compose.rememberLauncherForActivityResult
-          import androidx.activity.compose.setContent
-          import androidx.activity.result.contract.ActivityResultContracts
-          import androidx.compose.foundation.background
-          import androidx.compose.foundation.clickable
-          import androidx.compose.foundation.layout.*
-          import androidx.compose.foundation.lazy.LazyColumn
-          import androidx.compose.foundation.lazy.items
-          import androidx.compose.foundation.shape.RoundedCornerShape
-          import androidx.compose.material.icons.Icons
-          import androidx.compose.material.icons.filled.Cast
-          import androidx.compose.material.icons.filled.PlayArrow
-          import androidx.compose.material.icons.filled.VideoFile
-          import androidx.compose.material3.*
-          import androidx.compose.runtime.*
-          import androidx.compose.ui.Alignment
-          import androidx.compose.ui.Modifier
-          import androidx.compose.ui.draw.clip
-          import androidx.compose.ui.graphics.Brush
-          import androidx.compose.ui.graphics.Color
-          import androidx.compose.ui.platform.LocalContext
-          import androidx.compose.ui.text.font.FontWeight
-          import androidx.compose.ui.text.style.TextOverflow
-          import androidx.compose.ui.unit.dp
-          import androidx.compose.ui.unit.sp
+          import android.content.Context; import android.content.Intent; import android.media.projection.MediaProjectionManager; import android.net.Uri; import android.os.Bundle; import android.provider.MediaStore; import android.view.WindowManager
+          import androidx.activity.ComponentActivity; import androidx.activity.compose.rememberLauncherForActivityResult; import androidx.activity.compose.setContent; import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.compose.foundation.background; import androidx.compose.foundation.clickable; import androidx.compose.foundation.layout.*; import androidx.compose.foundation.lazy.LazyColumn; import androidx.compose.foundation.lazy.items; import androidx.compose.foundation.shape.RoundedCornerShape
+          import androidx.compose.material.icons.Icons; import androidx.compose.material.icons.filled.Cast; import androidx.compose.material.icons.filled.PlayArrow; import androidx.compose.material.icons.filled.VideoFile
+          import androidx.compose.material3.*; import androidx.compose.runtime.*; import androidx.compose.ui.Alignment; import androidx.compose.ui.Modifier; import androidx.compose.ui.draw.clip; import androidx.compose.ui.graphics.Brush; import androidx.compose.ui.graphics.Color; import androidx.compose.ui.platform.LocalContext; import androidx.compose.ui.text.font.FontWeight; import androidx.compose.ui.text.style.TextOverflow; import androidx.compose.ui.unit.dp; import androidx.compose.ui.unit.sp
           data class VideoItem(val id: Long, val name: String, val duration: Long, val size: Long, val uri: Uri)
           class MainActivity : ComponentActivity() {
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                  setContent { CarCasterTheme { CarCasterApp() } }
-              }
+              override fun onCreate(s: Bundle?) { super.onCreate(s); window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); setContent { MaterialTheme(colorScheme = darkColorScheme()) { CarCasterApp() } } }
           }
-          @Composable
-          fun CarCasterTheme(content: @Composable () -> Unit) {
-              MaterialTheme(colorScheme = darkColorScheme(background = Color(0xFF0A0A0F), surface = Color(0xFF0F0F1E), primary = Color(0xFF0088FF), onBackground = Color(0xFFE8E8F0), onSurface = Color(0xFFE8E8F0)), content = content)
-          }
-          @Composable
-          fun CarCasterApp() {
-              val context = LocalContext.current
-              var videos by remember { mutableStateOf<List<VideoItem>>(emptyList()) }
-              var isCasting by remember { mutableStateOf(false) }
-              var castStatus by remember { mutableStateOf("غير متصل") }
-              LaunchedEffect(Unit) { videos = loadVideos(context) }
-              val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-              val castLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                  if (result.resultCode == ComponentActivity.RESULT_OK) { isCasting = true; castStatus = "متصل — يبث على الشاشة" }
-              }
-              Column(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
-                  Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF1A1A2E), Color(0xFF16213E)))).padding(20.dp)) {
-                      Row(verticalAlignment = Alignment.CenterVertically) {
-                          Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Brush.linearGradient(listOf(Color(0xFF00C8FF), Color(0xFF0057FF)))), contentAlignment = Alignment.Center) { Text("🚗", fontSize = 22.sp) }
-                          Spacer(Modifier.width(12.dp))
-                          Column { Text("Car Video Caster", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE8E8F0)); Text("بث الفيديو لشاشة السيارة", fontSize = 12.sp, color = Color(0xFF7090B0)) }
+          @Composable fun CarCasterApp() {
+              val ctx = LocalContext.current; var videos by remember { mutableStateOf<List<VideoItem>>(emptyList()) }; var casting by remember { mutableStateOf(false) }
+              LaunchedEffect(Unit) { videos = loadVideos(ctx) }
+              val pm = ctx.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+              val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { if (it.resultCode == ComponentActivity.RESULT_OK) casting = true }
+              Column(Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
+                  Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF1A1A2E),Color(0xFF16213E)))).padding(20.dp)) { Text("🚗 Car Video Caster", fontSize=20.sp, fontWeight=FontWeight.Bold, color=Color.White) }
+                  Box(Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(16.dp)).background(if(casting) Color(0xFF004030) else Color(0xFF003060)).clickable { if(!casting) launcher.launch(pm.createScreenCaptureIntent()) else casting=false }.padding(18.dp)) {
+                      Row(verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.Center, modifier=Modifier.fillMaxWidth()) {
+                          Icon(Icons.Default.Cast, null, tint=Color.White, modifier=Modifier.size(24.dp)); Spacer(Modifier.width(10.dp))
+                          Text(if(casting) "إيقاف البث ⏹" else "ابدأ البث على شاشة السيارة ▶", color=Color.White, fontWeight=FontWeight.Bold, fontSize=16.sp)
                       }
                   }
-                  Box(modifier = Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(18.dp)).background(if (isCasting) Brush.linearGradient(listOf(Color(0xFF003020), Color(0xFF005040))) else Brush.linearGradient(listOf(Color(0xFF003060), Color(0xFF0057AA)))).clickable { if (!isCasting) castLauncher.launch(projectionManager.createScreenCaptureIntent()) else { isCasting = false; castStatus = "غير متصل" } }.padding(18.dp)) {
-                      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                          Icon(Icons.Default.Cast, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                          Spacer(Modifier.width(10.dp))
-                          Column { Text(if (isCasting) "إيقاف البث" else "ابدأ البث على شاشة السيارة", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White); Text(castStatus, fontSize = 12.sp, color = if (isCasting) Color(0xFF00FF88) else Color(0xFF80A0C0)) }
-                      }
-                  }
-                  Text("📂 الفيديوهات (${videos.size})", fontSize = 13.sp, color = Color(0xFF6070A0), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-                  LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                      items(videos) { video ->
-                          Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFF141428)).clickable { val intent = Intent(Intent.ACTION_VIEW).apply { setDataAndType(video.uri, "video/*"); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }; context.startActivity(intent) }.padding(14.dp)) {
-                              Row(verticalAlignment = Alignment.CenterVertically) {
-                                  Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF1A1A30)), contentAlignment = Alignment.Center) { Icon(Icons.Default.VideoFile, null, tint = Color(0xFF0088FF), modifier = Modifier.size(26.dp)) }
-                                  Spacer(Modifier.width(14.dp))
-                                  Column(Modifier.weight(1f)) { Text(video.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE0E8FF), maxLines = 1, overflow = TextOverflow.Ellipsis); Text("${formatDuration(video.duration)} • ${formatSize(video.size)}", fontSize = 12.sp, color = Color(0xFF5070A0)) }
-                                  Spacer(Modifier.width(10.dp))
-                                  Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF003060)), contentAlignment = Alignment.Center) { Icon(Icons.Default.PlayArrow, null, tint = Color(0xFF00C8FF), modifier = Modifier.size(20.dp)) }
-                              }
+                  Text("📂 الفيديوهات (${videos.size})", color=Color(0xFF6070A0), modifier=Modifier.padding(16.dp))
+                  LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(horizontal=16.dp), verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                      items(videos) { v ->
+                          Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF141428)).clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW).apply { setDataAndType(v.uri,"video/*"); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }) }.padding(14.dp), verticalAlignment=Alignment.CenterVertically) {
+                              Icon(Icons.Default.VideoFile, null, tint=Color(0xFF0088FF), modifier=Modifier.size(32.dp)); Spacer(Modifier.width(12.dp))
+                              Column(Modifier.weight(1f)) { Text(v.name, color=Color.White, maxLines=1, overflow=TextOverflow.Ellipsis); Text("${v.duration/60000}:${"%02d".format((v.duration/1000)%60)}", color=Color(0xFF5070A0), fontSize=12.sp) }
+                              Icon(Icons.Default.PlayArrow, null, tint=Color(0xFF00C8FF))
                           }
                       }
                   }
               }
           }
-          fun loadVideos(context: Context): List<VideoItem> {
-              val videos = mutableListOf<VideoItem>()
-              val projection = arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DURATION, MediaStore.Video.Media.SIZE)
-              context.contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, null, null, MediaStore.Video.Media.DATE_ADDED + " DESC")?.use {
-                  val idCol = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-                  val nameCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-                  val durCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-                  val sizeCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-                  while (it.moveToNext()) { val id = it.getLong(idCol); videos.add(VideoItem(id, it.getString(nameCol) ?: "فيديو", it.getLong(durCol), it.getLong(sizeCol), Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString()))) }
-              }
-              return videos
+          fun loadVideos(ctx: Context): List<VideoItem> {
+              val list = mutableListOf<VideoItem>()
+              ctx.contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Video.Media._ID,MediaStore.Video.Media.DISPLAY_NAME,MediaStore.Video.Media.DURATION,MediaStore.Video.Media.SIZE), null, null, MediaStore.Video.Media.DATE_ADDED+" DESC")?.use {
+                  while(it.moveToNext()) { val id=it.getLong(0); list.add(VideoItem(id,it.getString(1)?:"فيديو",it.getLong(2),it.getLong(3),Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,"$id"))) }
+              }; return list
           }
-          fun formatDuration(ms: Long): String { val s = ms/1000; val h = s/3600; val m = (s%3600)/60; val sec = s%60; return if (h > 0) "%d:%02d:%02d".format(h,m,sec) else "%d:%02d".format(m,sec) }
-          fun formatSize(bytes: Long): String = when { bytes >= 1_073_741_824 -> "%.1f GB".format(bytes/1_073_741_824.0); bytes >= 1_048_576 -> "%.0f MB".format(bytes/1_048_576.0); else -> "%.0f KB".format(bytes/1024.0) }
-          KOTLIN
+          EOF
 
       - name: Build APK
         run: |
-          chmod +x gradlew 2>/dev/null || true
-          ./gradlew assembleDebug --no-daemon 2>/dev/null || gradle assembleDebug --no-d
+          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -P /tmp
+          mkdir -p ~/.gradle/wrapper/dists/gradle-8.4-bin
+          unzip -q /tmp/gradle-8.4-bin.zip -d ~/.gradle/wrapper/dists/
+          export PATH=$PATH:~/.gradle/wrapper/dists/gradle-8.4/bin
+          gradle assembleDebug --no-daemon || ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarCaster-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
