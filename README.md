@@ -17,17 +17,30 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build APK with Docker
-        run: |
-          docker run --rm \
-            -v $PWD:/project \
-            mingc/android-build-box:latest \
-            bash -c "
-              cd /project
-              mkdir -p app/src/main/java/com/carcaster/app
-              mkdir -p app/src/main/res/values
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-              cat > settings.gradle << 'SETTINGS'
+      - name: Create project and build
+        run: |
+          mkdir -p app/src/main/java/com/carcaster/app
+          mkdir -p app/src/main/res/values
+          mkdir -p gradle/wrapper
+
+          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+
+          cat > gradle.properties << 'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=512m
+          EOF
+
+          cat > settings.gradle << 'EOF'
           pluginManagement {
               repositories { google(); mavenCentral(); gradlePluginPortal() }
           }
@@ -35,18 +48,18 @@ jobs:
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories { google(); mavenCentral() }
           }
-          rootProject.name = 'CarCaster'
-          include ':app'
-          SETTINGS
+          rootProject.name = "CarCaster"
+          include ":app"
+          EOF
 
-              cat > build.gradle << 'BUILDGRADLE'
+          cat > build.gradle << 'EOF'
           plugins {
               id 'com.android.application' version '8.2.2' apply false
               id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
           }
-          BUILDGRADLE
+          EOF
 
-              cat > app/build.gradle << 'APPGRADLE'
+          cat > app/build.gradle << 'EOF'
           plugins {
               id 'com.android.application'
               id 'org.jetbrains.kotlin.android'
@@ -78,9 +91,9 @@ jobs:
               implementation 'androidx.compose.material:material-icons-extended'
               implementation 'androidx.compose.foundation:foundation'
           }
-          APPGRADLE
+          EOF
 
-              cat > app/src/main/AndroidManifest.xml << 'MANIFEST'
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version='1.0' encoding='utf-8'?>
           <manifest xmlns:android='http://schemas.android.com/apk/res/android'>
               <uses-permission android:name='android.permission.READ_MEDIA_VIDEO' />
@@ -95,11 +108,11 @@ jobs:
                   </activity>
               </application>
           </manifest>
-          MANIFEST
+          EOF
 
-              echo '<resources><string name="app_name">Car Video Caster</string></resources>' > app/src/main/res/values/strings.xml
+          echo '<resources><string name="app_name">Car Video Caster</string></resources>' > app/src/main/res/values/strings.xml
 
-              cat > app/src/main/java/com/carcaster/app/MainActivity.kt << 'KOTLIN'
+          cat > app/src/main/java/com/carcaster/app/MainActivity.kt << 'EOF'
           package com.carcaster.app
           import android.content.Context
           import android.content.Intent
@@ -197,9 +210,10 @@ jobs:
               }
               return list
           }
-          KOTLIN
-              gradle assembleDebug --no-daemon
-            "
+          EOF
+
+          gradle wrapper --gradle-version 8.4
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
